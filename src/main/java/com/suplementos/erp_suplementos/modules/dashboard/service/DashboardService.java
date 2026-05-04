@@ -43,20 +43,21 @@ public class DashboardService {
         }
 
         // 2. BUSCAR KPIs FILTRADOS PELO PERÍODO
-        // Usamos o método sumAmountByTypeAndDate que criamos no Repository
-        BigDecimal revenue = transactionRepository.sumPaidAmountByType(TransactionType.REVENUE);
-        BigDecimal expense = transactionRepository.sumPaidAmountByType(TransactionType.EXPENSE);
+        // Agora sim chamando o método com filtro de datas!
+        BigDecimal revenue = transactionRepository.sumPaidAmountByTypeAndDate(TransactionType.REVENUE, start, now);
+        BigDecimal expense = transactionRepository.sumPaidAmountByTypeAndDate(TransactionType.EXPENSE, start, now);
 
+        // Tratamento de nulos (caso não haja vendas no período, o banco retorna null)
         revenue = (revenue != null) ? revenue : BigDecimal.ZERO;
         expense = (expense != null) ? expense : BigDecimal.ZERO;
 
-        // Alertas de validade (este costuma ser geral, mas mantemos os 30 dias de threshold)
+        // Alertas de validade (mantemos os 30 dias de threshold)
         long expiringCount = (long) inventoryService.getExpiringProducts(30).size();
 
         DashboardKpiDTO kpis = DashboardKpiDTO.builder()
                 .totalRevenue(revenue)
                 .totalExpense(expense)
-                .cashBalance(revenue.subtract(expense))
+                .cashBalance(revenue.subtract(expense)) // O saldo do card também refletirá apenas o período
                 .expiringProductsCount(expiringCount)
                 .build();
 
@@ -72,6 +73,7 @@ public class DashboardService {
 
         DashboardTrendDTO trends = new DashboardTrendDTO(dailyList);
 
+        // ADCIONANDO COMENTARIO
         // 4. RETORNAR COMPOSIÇÃO FINAL
         return DashboardResponseDTO.builder()
                 .kpis(kpis)
